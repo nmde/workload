@@ -1,8 +1,8 @@
-import { aliases, mdi } from 'vuetify/iconsets/mdi'
+import { aliases, mdi } from 'vuetify/iconsets/mdi';
 
 export default defineNuxtConfig({
   devtools: { enabled: true },
-  modules: ['@invictus.codes/nuxt-vuetify'],
+  modules: ['@invictus.codes/nuxt-vuetify', '@pinia/nuxt'],
   vuetify: {
     vuetifyOptions: {
       icons: {
