@@ -43,6 +43,7 @@ export class Calendar extends EventEmitter<{
     borderWidth: 1,
     dayWidth: 200,
     dayHeight: 200,
+    maxAssignmentHeight: 100,
     padding: 8,
   };
 
@@ -53,18 +54,24 @@ export class Calendar extends EventEmitter<{
    * @param endCol - The ending column.
    * @param row - The row.
    */
-  private createAssignment(assignment: Assignment, startCol: number, endCol: number, row: number) {
-    const category = this.categories.find((v) => v.name === assignment.category);
+  private createAssignment(
+    assignment: Assignment,
+    startCol: number,
+    endCol: number,
+    row: number,
+  ) {
+    const category = this.categories.find(
+      (v) => v.data.name === assignment.data.category,
+    );
     this.assignmentContainer
       .append('rect')
-      .attr('fill', category?.color || 'black')
-      .attr('x', (d) => startCol * this.options.dayWidth)
-      .attr('y', (d) => row * this.options.dayHeight)
-      .attr('height', 100)
+      .attr('fill', category?.data.color || 'black')
+      .attr('x', () => startCol * this.options.dayWidth)
+      .attr('y', () => row * this.options.dayHeight)
+      .attr('height', assignment.data.weight * this.options.maxAssignmentHeight)
       .attr(
         'width',
-        (d) =>
-          endCol * this.options.dayWidth - startCol * this.options.dayWidth,
+        () => endCol * this.options.dayWidth - startCol * this.options.dayWidth,
       );
   }
 
@@ -163,7 +170,9 @@ export class Calendar extends EventEmitter<{
       });
     this.assignmentContainer = container.append('g');
     assignments.forEach((d) => {
-      const { row: startRow, column: startCol } = this.getMappedDay(d.startDate);
+      const { row: startRow, column: startCol } = this.getMappedDay(
+        d.startDate,
+      );
       const { row: endRow, column: endCol } = this.getMappedDay(d.endDate);
       if (startRow === endRow) {
         this.createAssignment(d, startCol, endCol + 1, startRow);

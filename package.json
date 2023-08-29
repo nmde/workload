@@ -20,9 +20,11 @@
   "dependencies": {
     "@invictus.codes/nuxt-vuetify": "^0.3.0",
     "@pinia/nuxt": "^0.4.11",
+    "@tauri-apps/api": "^1.4.0",
     "d3": "^7.8.5",
     "ee-ts": "^1.0.2",
     "pinia": "^2.1.6",
+    "tauri-plugin-sql-api": "https://github.com/tauri-apps/tauri-plugin-sql#v1",
     "vite": "^4.4.9",
     "vue": "^3.3.4",
     "webpack": "^5.88.2"

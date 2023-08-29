@@ -2,12 +2,11 @@
 import { select } from 'd3';
 import { storeToRefs } from 'pinia';
 import { onMounted, ref } from 'vue';
-import { Assignment } from '../classes/Assignment';
 import { Calendar } from '../classes/Calendar';
 import { useStore } from '../stores/store';
 
 const store = useStore();
-const { addAssignment, addCategory } = store;
+const { addAssignment, addCategory, loadAssignments, loadCategories } = store;
 const { assignments, categories } = storeToRefs(store);
 
 const svg = ref<SVGElement | null>(null);
@@ -53,7 +52,9 @@ function reRender() {
   );
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadAssignments();
+  await loadCategories();
   const today = new Date();
   year.value = today.getFullYear();
   month.value = today.getMonth();
@@ -131,8 +132,8 @@ onMounted(() => {
         ></v-text-field>
         <v-select
           :items="categories"
-          item-title="name"
-          item-value="name"
+          item-title="data.name"
+          item-value="data.name"
           :error="assignmentCategoryError"
           v-model="assignmentCategory"
         ></v-select>
@@ -165,10 +166,10 @@ onMounted(() => {
           block
           @click="
             () => {
+              const w = Number(assignmentWeight);
               assignmentTitleError = assignmentTitle.length === 0;
               assignmentWeightError =
-                assignmentWeight.length === 0 ||
-                isNaN(Number(assignmentWeight));
+                assignmentWeight.length === 0 || isNaN(w) || w > 1 || w < 0;
               assignmentCategoryError = assignmentCategory.length === 0;
               assignmentDateError = startDate > endDate;
               if (
@@ -178,13 +179,11 @@ onMounted(() => {
                 !assignmentDateError
               ) {
                 addAssignment(
-                  new Assignment(
-                    assignmentTitle,
-                    startDate,
-                    endDate,
-                    Number(assignmentWeight),
-                    assignmentCategory,
-                  ),
+                  assignmentTitle,
+                  startDate.toISOString(),
+                  endDate.toISOString(),
+                  w,
+                  assignmentCategory,
                 );
                 dayDialog = false;
                 reRender();
