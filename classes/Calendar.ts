@@ -1,6 +1,7 @@
 import { Selection } from 'd3';
 import { EventEmitter } from 'ee-ts';
 import { Assignment } from './Assignment';
+import { Category } from './Category';
 
 type Day = {
   date: Date;
@@ -26,6 +27,17 @@ export class Calendar extends EventEmitter<{
     'December',
   ];
 
+  private assignmentContainer!: Selection<
+    SVGGElement,
+    null,
+    HTMLElement,
+    unknown
+  >;
+
+  private categories: Category[] = [];
+
+  private dayMap: Record<number, Record<number, Record<number, Day>>> = {};
+
   public options = {
     borderColor: 'black',
     borderWidth: 1,
@@ -33,6 +45,37 @@ export class Calendar extends EventEmitter<{
     dayHeight: 200,
     padding: 8,
   };
+
+  /**
+   * Creates an assignment element.
+   * @param assignment - The assignment data.
+   * @param startCol - The starting column.
+   * @param endCol - The ending column.
+   * @param row - The row.
+   */
+  private createAssignment(assignment: Assignment, startCol: number, endCol: number, row: number) {
+    const category = this.categories.find((v) => v.name === assignment.category);
+    this.assignmentContainer
+      .append('rect')
+      .attr('fill', category?.color || 'black')
+      .attr('x', (d) => startCol * this.options.dayWidth)
+      .attr('y', (d) => row * this.options.dayHeight)
+      .attr('height', 100)
+      .attr(
+        'width',
+        (d) =>
+          endCol * this.options.dayWidth - startCol * this.options.dayWidth,
+      );
+  }
+
+  /**
+   * Shortcut for getting the mapped day from a date.
+   * @param date - The date to get.
+   * @returns The day data.
+   */
+  private getMappedDay(date: Date) {
+    return this.dayMap[date.getFullYear()][date.getMonth()][date.getDate()];
+  }
 
   /**
    * Renders the calendar.
@@ -43,10 +86,12 @@ export class Calendar extends EventEmitter<{
    */
   public render(
     container: Selection<SVGElement, null, HTMLElement, undefined>,
-    data: Assignment[],
+    assignments: Assignment[],
+    categories: Category[],
     year: number,
     month: number,
   ) {
+    this.categories = categories;
     const { dayWidth, dayHeight, padding } = this.options;
     container.selectAll('*').remove();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -56,11 +101,20 @@ export class Calendar extends EventEmitter<{
     let i = 0;
     const days: Day[][] = [[]];
     while (i < daysInMonth) {
-      days[days.length - 1].push({
-        date: new Date(year, month, i + 1),
+      const date = new Date(year, month, i + 1);
+      const day = {
+        date,
         row: days.length - 1,
         column: currentCol,
-      });
+      };
+      days[days.length - 1].push(day);
+      if (!this.dayMap[year]) {
+        this.dayMap[year] = {};
+      }
+      if (!this.dayMap[year][month]) {
+        this.dayMap[year][month] = {};
+      }
+      this.dayMap[year][month][i + 1] = day;
       currentCol += 1;
       if (currentCol >= daysPerRow) {
         currentCol = 0;
@@ -70,6 +124,7 @@ export class Calendar extends EventEmitter<{
     }
     container.attr('height', days.length * dayHeight);
     const dayNodes = container
+      .append('g')
       .selectAll('g')
       .data(days)
       .enter()
@@ -106,5 +161,19 @@ export class Calendar extends EventEmitter<{
       .attr('y', function (d) {
         return d.row * dayHeight + this.getBBox().height + padding;
       });
+    this.assignmentContainer = container.append('g');
+    assignments.forEach((d) => {
+      const { row: startRow, column: startCol } = this.getMappedDay(d.startDate);
+      const { row: endRow, column: endCol } = this.getMappedDay(d.endDate);
+      if (startRow === endRow) {
+        this.createAssignment(d, startCol, endCol + 1, startRow);
+      } else {
+        this.createAssignment(d, startCol, daysPerRow, startRow);
+        for (let row = startRow + 1; row < endRow; row += 1) {
+          this.createAssignment(d, 0, daysPerRow, row);
+        }
+        this.createAssignment(d, 0, endCol + 1, endRow);
+      }
+    });
   }
 }
