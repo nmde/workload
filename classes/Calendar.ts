@@ -1,4 +1,5 @@
-import { select, Selection } from 'd3';
+import { Selection } from 'd3';
+import { EventEmitter } from 'ee-ts';
 import { Assignment } from './Assignment';
 
 type Day = {
@@ -7,7 +8,9 @@ type Day = {
   column: number;
 };
 
-export class Calendar {
+export class Calendar extends EventEmitter<{
+  dayClicked: (date: Date) => void;
+}> {
   public static months = [
     'January',
     'February',
@@ -73,10 +76,23 @@ export class Calendar {
       .selectAll('g')
       .data((row) => row)
       .enter()
-      .append('g');
+      .append('g')
+      .on('click', (_event, d) => {
+        this.emit('dayClicked', d.date);
+      });
     dayNodes
       .append('rect')
-      .attr('fill', 'transparent')
+      .attr('fill', (d) => {
+        const today = new Date();
+        if (
+          d.date.getFullYear() === today.getFullYear() &&
+          d.date.getMonth() === today.getMonth() &&
+          d.date.getDate() === today.getDate()
+        ) {
+          return 'rgba(55,0,179,0.3)';
+        }
+        return 'transparent';
+      })
       .attr('stroke', this.options.borderColor)
       .attr('stroke-width', this.options.borderWidth)
       .attr('x', (d) => d.column * this.options.dayWidth)

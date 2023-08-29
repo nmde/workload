@@ -13,6 +13,13 @@ export default defineNuxtConfig({
         },
       },
     },
-    moduleOptions: {},
+    moduleOptions: {
+      useVuetifyLabs: true,
+    },
   },
+  pinia: {
+    autoImports: [
+      'defineStore',
+    ]
+  }
 });
