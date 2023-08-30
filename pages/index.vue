@@ -2,6 +2,7 @@
 import { select } from 'd3';
 import { storeToRefs } from 'pinia';
 import { onMounted, ref } from 'vue';
+import { Assignment } from '../classes/Assignment';
 import { Calendar } from '../classes/Calendar';
 import { useStore } from '../stores/store';
 
@@ -16,11 +17,17 @@ const dayDialog = ref(false);
 const selectedDay = ref<Date>(new Date());
 const startDate = ref<Date>(new Date());
 const endDate = ref<Date>(new Date());
-const assignmentTitle = ref('');
+const selectedAssignment = ref<Assignment>(
+  new Assignment({
+    title: '',
+    startDate: '',
+    endDate: '',
+    category: '',
+    weight: 0,
+  }),
+);
 const assignmentTitleError = ref(false);
-const assignmentWeight = ref('');
 const assignmentWeightError = ref(false);
-const assignmentCategory = ref('');
 const assignmentCategoryError = ref(false);
 const assignmentDateError = ref(false);
 const categoryDialog = ref(false);
@@ -36,6 +43,24 @@ calendar.on('dayClicked', (date) => {
   dayDialog.value = true;
   startDate.value = date;
   endDate.value = new Date();
+  selectedAssignment.value = new Assignment({
+    title: '',
+    startDate: '',
+    endDate: '',
+    category: '',
+    weight: 0,
+  });
+  assignmentTitleError.value = false;
+  assignmentWeightError.value = false;
+  assignmentCategoryError.value = false;
+  assignmentDateError.value = false;
+});
+
+calendar.on('assignmentClicked', (assignment) => {
+  dayDialog.value = true;
+  selectedAssignment.value = assignment;
+  startDate.value = assignment.startDate;
+  endDate.value = assignment.endDate;
   assignmentTitleError.value = false;
   assignmentWeightError.value = false;
   assignmentCategoryError.value = false;
@@ -122,20 +147,20 @@ onMounted(async () => {
         <v-text-field
           label="Assignment Title"
           :error="assignmentTitleError"
-          v-model="assignmentTitle"
+          v-model="selectedAssignment.data.title"
         ></v-text-field>
         <v-text-field
           label="Assignment Weight"
           :error="assignmentWeightError"
           type="number"
-          v-model="assignmentWeight"
+          v-model="selectedAssignment.data.weight"
         ></v-text-field>
         <v-select
           :items="categories"
           item-title="data.name"
           item-value="data.name"
           :error="assignmentCategoryError"
-          v-model="assignmentCategory"
+          v-model="selectedAssignment.data.category"
         ></v-select>
         <div id="date-pickers">
           <div class="date-picker">
@@ -166,11 +191,18 @@ onMounted(async () => {
           block
           @click="
             () => {
-              const w = Number(assignmentWeight);
-              assignmentTitleError = assignmentTitle.length === 0;
+              selectedAssignment.data.weight = Number(
+                selectedAssignment.data.weight,
+              );
+              selectedAssignment.data.startDate = startDate.toISOString();
+              selectedAssignment.data.endDate = endDate.toISOString();
+              assignmentTitleError = selectedAssignment.data.title.length === 0;
               assignmentWeightError =
-                assignmentWeight.length === 0 || isNaN(w) || w > 1 || w < 0;
-              assignmentCategoryError = assignmentCategory.length === 0;
+                isNaN(selectedAssignment.data.weight) ||
+                selectedAssignment.data.weight > 1 ||
+                selectedAssignment.data.weight < 0;
+              assignmentCategoryError =
+                selectedAssignment.data.category.length === 0;
               assignmentDateError = startDate > endDate;
               if (
                 !assignmentTitleError &&
@@ -178,13 +210,7 @@ onMounted(async () => {
                 !assignmentCategoryError &&
                 !assignmentDateError
               ) {
-                addAssignment(
-                  assignmentTitle,
-                  startDate.toISOString(),
-                  endDate.toISOString(),
-                  w,
-                  assignmentCategory,
-                );
+                addAssignment(selectedAssignment);
                 dayDialog = false;
                 reRender();
               }

@@ -9,8 +9,6 @@ type AssignmentData = {
 };
 
 export class Assignment extends Entity<AssignmentData> {
-  public static tableName = 'Assignment';
-
   public constructor(data: AssignmentData) {
     super('Assignment', data);
   }

@@ -7,7 +7,23 @@ export class TauriDatabase {
 
   private database!: Database;
 
+  private ensuredTables: string[] = [];
+
   public constructor(public path: string) {}
+
+  /**
+   * Gets a cleaned value.
+   * @param value - The value to clean.
+   */
+  private getCleanValue(value: any) {
+    if (typeof value === 'string') {
+      return `'${value}'`;
+    } else if (typeof value === 'number') {
+      return `${value}`;
+    } else {
+      throw new Error(`Unhandled data type for ${value}!`);
+    }
+  }
 
   /**
    * Safely gets the local database connection.
@@ -25,21 +41,24 @@ export class TauriDatabase {
    * @param entity - The entity to model the table after.
    */
   private async ensureTable(entity: Entity) {
-    let query = `CREATE TABLE IF NOT EXISTS ${entity.tableName} (`;
-    Object.entries(entity.data).forEach(([name, value]) => {
-      let str = `${name} `;
-      if (typeof value === 'number') {
-        str += 'INTEGER';
-      } else if (typeof value === 'string') {
-        str += 'TEXT';
-      } else {
-        throw new Error(`Unhandled data type for ${name}!`);
-      }
-      query += `${str}, `;
-    });
-    query = query.substring(0, query.length - 2);
-    query += `)`;
-    await this.execute(query);
+    if (this.ensuredTables.indexOf(entity.tableName) < 0) {
+      let query = `CREATE TABLE IF NOT EXISTS ${entity.tableName} (Id TEXT PRIMARY KEY,`;
+      Object.entries(entity.data).forEach(([name, value]) => {
+        let str = `${name} `;
+        if (typeof value === 'number') {
+          str += 'INTEGER';
+        } else if (typeof value === 'string') {
+          str += 'TEXT';
+        } else {
+          throw new Error(`Unhandled data type for ${name}!`);
+        }
+        query += `${str}, `;
+      });
+      query = query.substring(0, query.length - 2);
+      query += `)`;
+      await this.execute(query);
+      this.ensuredTables.push(entity.tableName);
+    }
   }
 
   /**
@@ -52,27 +71,46 @@ export class TauriDatabase {
   }
 
   /**
-   * Inserts items into a table.
-   * @param into
+   * Checks if the given entity exists in the databse.
+   * @param entity - The entity to check for.
    */
-  public async insert(entity: Entity) {
+  public async exists(entity: Entity) {
+    return (
+      (
+        await this.select(
+          `SELECT * FROM ${entity.tableName} WHERE Id='${entity.id}'`,
+        )
+      ).length > 0
+    );
+  }
+
+  /**
+   * Inserts items into a table.
+   * @param entity - The entity to insert.
+   * @param autoUpdate - If the entity already exists, automatically update instead of inserting.
+   */
+  public async insert(entity: Entity, autoUpdate = true) {
     await this.ensureTable(entity);
-    let query = `INSERT INTO ${entity.tableName} (`;
-    let values = '';
-    Object.keys(entity.data).forEach((name) => {
-      query += `${name}, `;
-      if (typeof entity.data[name] === 'string') {
-        values += `'${entity.data[name]}', `;
-      } else if (typeof entity.data[name] === 'number') {
-        values += `${entity.data[name]}, `;
+    if (await this.exists(entity)) {
+      if (autoUpdate) {
+        this.update(entity);
       } else {
-        throw new Error(`Unhandled data type for ${name}!`);
+        throw new Error(
+          `Entity already exists: ${entity.tableName}/${entity.id}`,
+        );
       }
-    });
-    query = query.substring(0, query.length - 2);
-    values = values.substring(0, values.length - 2);
-    query += `) VALUES (${values})`;
-    await this.execute(query);
+    } else {
+      let query = `INSERT INTO ${entity.tableName} (Id,`;
+      let values = `'${entity.id}',`;
+      Object.keys(entity.data).forEach((name) => {
+        query += `${name}, `;
+        values += `${this.getCleanValue(entity.data[name])}, `;
+      });
+      query = query.substring(0, query.length - 2);
+      values = values.substring(0, values.length - 2);
+      query += `) VALUES (${values})`;
+      await this.execute(query);
+    }
   }
 
   /**
@@ -99,5 +137,20 @@ export class TauriDatabase {
     } catch (err) {
       return [];
     }
+  }
+
+  /**
+   * Updates an entity.
+   * @param entity - The entity to update.
+   */
+  public async update(entity: Entity) {
+    await this.ensureTable(entity);
+    let query = `UPDATE ${entity.tableName} SET `;
+    Object.keys(entity.data).forEach((name) => {
+      query += `${name} = ${this.getCleanValue(entity.data[name])}, `;
+    });
+    query = query.substring(0, query.length - 2);
+    query += ` WHERE Id='${entity.id}'`;
+    await this.execute(query);
   }
 }

@@ -11,6 +11,7 @@ type Day = {
 
 export class Calendar extends EventEmitter<{
   dayClicked: (date: Date) => void;
+  assignmentClicked: (assignment: Assignment) => void;
 }> {
   public static months = [
     'January',
@@ -72,7 +73,10 @@ export class Calendar extends EventEmitter<{
       .attr(
         'width',
         () => endCol * this.options.dayWidth - startCol * this.options.dayWidth,
-      );
+      )
+      .on('click', () => {
+        this.emit('assignmentClicked', assignment);
+      });
   }
 
   /**

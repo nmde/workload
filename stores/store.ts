@@ -11,16 +11,9 @@ export const useStore = defineStore('store', () => {
    * Adds an assignment.
    * @param assignment - The assignment to add.
    */
-  function addAssignment(
-    title: string,
-    startDate: string,
-    endDate: string,
-    weight: number,
-    category: string,
-  ) {
-    const a = new Assignment({ title, startDate, endDate, weight, category });
-    assignments.value.push(a);
-    database.insert(a);
+  function addAssignment(assignment: Assignment) {
+    assignments.value.push(assignment);
+    database.insert(assignment);
   }
 
   /**
